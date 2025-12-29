@@ -5,8 +5,6 @@ macOS용 PDF와 이미지 파일을 변환하는 Python 스크립트 모음입�
 ## 설치
 
 ```bash
-# Homebrew로 Python 및 Poppler 설치
-brew install python3 poppler
 # Python 패키지 설치
 pip3 install -r requirements.txt
 ```
@@ -38,6 +36,5 @@ python3 images_to_pdf.py ~/Pictures/vacation/ # 폴더 → {폴더명}_merged.pd
 
 ## 문제 해결
 ```bash
-brew install poppler                    # poppler 오류 시
-pip3 install pdf2image pillow          # 패키지 오류 시
+pip3 install -r requirements.txt       # 패키지 오류 시
 ```

@@ -7,7 +7,7 @@ import os
 script_dir = Path(__file__).parent.absolute()
 sys.path.insert(0, str(script_dir))
 
-from pdf2image import convert_from_path
+import fitz  # PyMuPDF
 from notification import format_size, show_conversion_notification
 
 PDF_EXT = {".pdf"}
@@ -24,7 +24,8 @@ def iter_files(paths):
 def convert_one(src: Path):
     # PDF의 각 페이지를 이미지로 변환
     try:
-        images = convert_from_path(str(src), dpi=200)
+        pdf_doc = fitz.open(str(src))
+        page_count = len(pdf_doc)
     except Exception as e:
         raise Exception(f"PDF 읽기 실패: {e}")
     
@@ -34,11 +35,15 @@ def convert_one(src: Path):
     
     # 단일 페이지: 원본과 같은 폴더에 저장
     # 여러 페이지: {원본명}_images 폴더에 저장
-        if len(images) == 1:
+    if page_count == 1:
         # 단일 페이지인 경우
-            dst = src.parent / (src.stem + ".jpg")
-        im = images[0]
-        im.convert("RGB").save(dst, format="JPEG", quality=92, optimize=True)
+        dst = src.parent / (src.stem + ".jpg")
+        page = pdf_doc[0]
+        # DPI 200에 해당하는 확대율 (72 DPI 기준)
+        zoom = 200 / 72
+        mat = fitz.Matrix(zoom, zoom)
+        pix = page.get_pixmap(matrix=mat)
+        pix.save(str(dst), output="jpeg", jpg_quality=92)
         
         file_size = os.path.getsize(dst)
         created_files.append({
@@ -51,26 +56,33 @@ def convert_one(src: Path):
         output_dir = src.parent / (src.stem + "_images")
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        for i, im in enumerate(images, start=1):
+        zoom = 200 / 72
+        mat = fitz.Matrix(zoom, zoom)
+        
+        for i in range(page_count):
             # 파일명: 원본이름_001.jpg 형식
-            dst = output_dir / (src.stem + f"_{i:03d}.jpg")
-            im.convert("RGB").save(dst, format="JPEG", quality=92, optimize=True)
+            dst = output_dir / (src.stem + f"_{i+1:03d}.jpg")
+            page = pdf_doc[i]
+            pix = page.get_pixmap(matrix=mat)
+            pix.save(str(dst), output="jpeg", jpg_quality=92)
             
-        # 생성된 파일 정보 수집
-        file_size = os.path.getsize(dst)
-        created_files.append({
-            'path': dst,
-            'size': file_size
-        })
-        total_size += file_size
+            # 생성된 파일 정보 수집
+            file_size = os.path.getsize(dst)
+            created_files.append({
+                'path': dst,
+                'size': file_size
+            })
+            total_size += file_size
+    
+    pdf_doc.close()
     
     return {
         'success': True,
         'source': src,
-        'pages': len(images),
+        'pages': page_count,
         'files': created_files,
         'total_size': total_size,
-        'output_dir': output_dir if len(images) > 1 else None
+        'output_dir': output_dir if page_count > 1 else None
     }
 
 def main(argv):

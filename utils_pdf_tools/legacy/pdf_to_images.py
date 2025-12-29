@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-from pdf2image import convert_from_path
 from pathlib import Path
 import sys
 import os
 
-# notification 모듈 임포트
+import fitz  # PyMuPDF
 from notification import format_size, show_conversion_notification
 
 PDF_EXT = {".pdf"}
@@ -21,7 +20,8 @@ def iter_files(paths):
 def extract_images_from_pdf(src: Path, output_dir: Path, format="jpg"):
     """PDF에서 각 페이지를 이미지로 추출"""
     try:
-        images = convert_from_path(str(src), dpi=200)
+        pdf_doc = fitz.open(str(src))
+        page_count = len(pdf_doc)
     except Exception as e:
         raise Exception(f"PDF 읽기 실패: {e}")
     
@@ -31,15 +31,22 @@ def extract_images_from_pdf(src: Path, output_dir: Path, format="jpg"):
     # 출력 디렉토리 생성
     output_dir.mkdir(parents=True, exist_ok=True)
     
+    # DPI 200에 해당하는 확대율 (72 DPI 기준)
+    zoom = 200 / 72
+    mat = fitz.Matrix(zoom, zoom)
+    
     # 각 페이지를 이미지로 저장
-    for i, im in enumerate(images, start=1):
+    for i in range(page_count):
+        page = pdf_doc[i]
+        pix = page.get_pixmap(matrix=mat)
+        
         # 파일명: 원본이름_001.jpg 형식
         if format.lower() == "png":
-            dst = output_dir / (src.stem + f"_{i:03d}.png")
-            im.save(dst, format="PNG", optimize=True)
+            dst = output_dir / (src.stem + f"_{i+1:03d}.png")
+            pix.save(str(dst), output="png")
         else:  # 기본값: JPG
-            dst = output_dir / (src.stem + f"_{i:03d}.jpg")
-            im.convert("RGB").save(dst, format="JPEG", quality=92, optimize=True)
+            dst = output_dir / (src.stem + f"_{i+1:03d}.jpg")
+            pix.save(str(dst), output="jpeg", jpg_quality=92)
         
         # 생성된 파일 정보 수집
         file_size = os.path.getsize(dst)
@@ -49,10 +56,12 @@ def extract_images_from_pdf(src: Path, output_dir: Path, format="jpg"):
         })
         total_size += file_size
     
+    pdf_doc.close()
+    
     return {
         'success': True,
         'source': src,
-        'pages': len(images),
+        'pages': page_count,
         'files': created_files,
         'total_size': total_size
     }
