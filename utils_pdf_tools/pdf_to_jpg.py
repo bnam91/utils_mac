@@ -34,9 +34,9 @@ def convert_one(src: Path):
     
     # 단일 페이지: 원본과 같은 폴더에 저장
     # 여러 페이지: {원본명}_images 폴더에 저장
-    if len(images) == 1:
+        if len(images) == 1:
         # 단일 페이지인 경우
-        dst = src.parent / (src.stem + ".jpg")
+            dst = src.parent / (src.stem + ".jpg")
         im = images[0]
         im.convert("RGB").save(dst, format="JPEG", quality=92, optimize=True)
         
@@ -56,13 +56,13 @@ def convert_one(src: Path):
             dst = output_dir / (src.stem + f"_{i:03d}.jpg")
             im.convert("RGB").save(dst, format="JPEG", quality=92, optimize=True)
             
-            # 생성된 파일 정보 수집
-            file_size = os.path.getsize(dst)
-            created_files.append({
-                'path': dst,
-                'size': file_size
-            })
-            total_size += file_size
+        # 생성된 파일 정보 수집
+        file_size = os.path.getsize(dst)
+        created_files.append({
+            'path': dst,
+            'size': file_size
+        })
+        total_size += file_size
     
     return {
         'success': True,
