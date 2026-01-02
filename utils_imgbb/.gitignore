@@ -3,3 +3,6 @@
 .AppleDouble
 .LSOverride
 
+# Node modules
+node_modules/
+
